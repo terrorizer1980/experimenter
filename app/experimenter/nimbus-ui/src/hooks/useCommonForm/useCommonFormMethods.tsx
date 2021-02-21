@@ -82,12 +82,20 @@ export function useCommonFormMethods<FieldNames extends string>(
     return (
       <>
         {errors[name] && (
-          <Form.Control.Feedback type="invalid" data-for={fieldName}>
+          <Form.Control.Feedback
+            type="invalid"
+            data-for={fieldName}
+            role="alert"
+          >
             {(errors[name] as FieldError).message}
           </Form.Control.Feedback>
         )}
         {submitErrors![camelToSnakeCase(name)] && (
-          <Form.Control.Feedback type="invalid" data-for={fieldName}>
+          <Form.Control.Feedback
+            type="invalid"
+            data-for={fieldName}
+            role="alert"
+          >
             {submitErrors![camelToSnakeCase(name)]}
           </Form.Control.Feedback>
         )}

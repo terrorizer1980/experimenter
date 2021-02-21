@@ -130,10 +130,10 @@ const FormOverview = ({
         noValidate
         onSubmit={handleSave}
         validated={isSubmitted && isValid}
-        data-testid="FormOverview"
+        aria-label="form"
       >
         {submitErrors["*"] && (
-          <Alert data-testid="submit-error" variant="warning">
+          <Alert variant="warning" role="alert">
             {submitErrors["*"]}
           </Alert>
         )}
@@ -288,7 +288,6 @@ const FormOverview = ({
 
               <div className="pt-2 mb-5 text-right">
                 <Button
-                  data-testid="add-additional-link"
                   variant="outline-primary"
                   size="sm"
                   onClick={addDocumentationLink}
@@ -304,7 +303,6 @@ const FormOverview = ({
           {!!experiment && (
             <div className="p-2">
               <button
-                data-testid="next-button"
                 onClick={handleSaveNext}
                 className="btn btn-secondary"
                 disabled={isLoading}
@@ -316,7 +314,6 @@ const FormOverview = ({
           )}
           <div className="p-2">
             <button
-              data-testid="submit-button"
               type="submit"
               onClick={handleSave}
               className="btn btn-primary"
