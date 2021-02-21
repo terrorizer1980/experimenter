@@ -4,54 +4,18 @@
 
 import { MockedResponse } from "@apollo/client/testing";
 import { navigate } from "@reach/router";
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import fetchMock from "jest-fetch-mock";
 import React from "react";
-import PageEditOverview from ".";
 import { UPDATE_EXPERIMENT_MUTATION } from "../../gql/experiments";
 import { SUBMIT_ERROR } from "../../lib/constants";
 import { mockExperimentMutation, mockExperimentQuery } from "../../lib/mocks";
-import { RouterSlugProvider } from "../../lib/test-utils";
 import FormOverview from "../FormOverview";
-
-const { mock, experiment } = mockExperimentQuery("demo-slug");
-
-jest.mock("@reach/router", () => ({
-  ...jest.requireActual("@reach/router"),
-  navigate: jest.fn(),
-}));
-
-let mockSubmitData: Record<string, string> = {};
-const mockSubmit = jest.fn();
+import { Subject } from "./mocks";
 
 describe("PageEditOverview", () => {
-  beforeAll(() => {
-    fetchMock.enableMocks();
-  });
-
-  afterAll(() => {
-    fetchMock.disableMocks();
-  });
-
-  let mutationMock: any;
-
-  const Subject = ({
-    mocks = [],
-  }: {
-    mocks?: MockedResponse<Record<string, any>>[];
-  }) => {
-    return (
-      <RouterSlugProvider {...{ mocks }}>
-        <PageEditOverview />
-      </RouterSlugProvider>
-    );
-  };
+  beforeAll(() => fetchMock.enableMocks());
+  afterAll(() => fetchMock.disableMocks());
 
   beforeEach(() => {
     mockSubmitData = {
@@ -72,98 +36,95 @@ describe("PageEditOverview", () => {
 
   it("renders as expected", async () => {
     render(<Subject mocks={[mock]} />);
-    await waitFor(() => {
-      expect(screen.getByTestId("PageEditOverview")).toBeInTheDocument();
-      expect(screen.getByTestId("header-experiment")).toBeInTheDocument();
-    });
+    await screen.findByTestId("PageEditOverview");
   });
 
   it("handles form submission", async () => {
     render(<Subject mocks={[mock, mutationMock]} />);
     await screen.findByTestId("PageEditOverview");
-    await act(async () => void fireEvent.click(screen.getByTestId("submit")));
-    expect(mockSubmit).toHaveBeenCalled();
-  });
-
-  it("handles experiment form submission with server-side validation errors", async () => {
-    const expectedErrors = {
-      name: { message: "already exists" },
-    };
-    mutationMock.result.data.updateExperiment.message = expectedErrors;
-    render(<Subject mocks={[mock, mutationMock]} />);
-    let submitButton: HTMLButtonElement;
-    await waitFor(() => {
-      submitButton = screen.getByTestId("submit") as HTMLButtonElement;
-    });
-    await act(async () => {
-      fireEvent.click(submitButton);
-    });
-    expect(screen.getByTestId("submitErrors")).toHaveTextContent(
-      JSON.stringify(expectedErrors),
-    );
-  });
-
-  it("handles experiment form submission with bad server data", async () => {
-    // @ts-ignore - intentionally breaking this type for error handling
-    delete mutationMock.result.data.updateExperiment;
-    render(<Subject mocks={[mock, mutationMock]} />);
-    let submitButton: HTMLButtonElement;
-    await waitFor(() => {
-      submitButton = screen.getByTestId("submit") as HTMLButtonElement;
-    });
-    await act(async () => {
-      fireEvent.click(submitButton);
-    });
-    expect(screen.getByTestId("submitErrors")).toHaveTextContent(
-      JSON.stringify({ "*": SUBMIT_ERROR }),
-    );
-  });
-
-  it("handles experiment form submission with server API error", async () => {
-    mutationMock.result.errors = [new Error("an error")];
-    render(<Subject mocks={[mock, mutationMock]} />);
-    let submitButton: HTMLButtonElement;
-    await waitFor(() => {
-      submitButton = screen.getByTestId("submit") as HTMLButtonElement;
-    });
-    await act(async () => {
-      fireEvent.click(submitButton);
-    });
-    expect(screen.getByTestId("submitErrors")).toHaveTextContent(
-      JSON.stringify({ "*": SUBMIT_ERROR }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(mockSubmit).toHaveBeenCalled());
   });
 
   it("handles form next button", async () => {
     render(<Subject mocks={[mock, mutationMock]} />);
     await screen.findByTestId("PageEditOverview");
-    await act(async () => void fireEvent.click(screen.getByTestId("next")));
-    expect(mockSubmit).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith("branches");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save and Continue" }));
+
+    await waitFor(() => {
+      expect(mockSubmit).toHaveBeenCalled();
+      expect(navigate).toHaveBeenCalledWith("branches");
+    });
+  });
+
+  it("handles form submission with server-side validation errors", async () => {
+    const expectedErrors = {
+      name: { message: "already exists" },
+    };
+    // @ts-ignore - data is not typed on result
+    mutationMock.result.data.updateExperiment.message = expectedErrors;
+    render(<Subject mocks={[mock, mutationMock]} />);
+
+    const saveButton = await screen.findByRole("button", { name: "Save" });
+    fireEvent.click(saveButton);
+
+    const feedback = await screen.findByRole("alert");
+    expect(feedback).toHaveTextContent(JSON.stringify(expectedErrors));
+  });
+
+  it("handles form submission with bad server data", async () => {
+    // @ts-ignore - intentionally breaking this type for error handling
+    delete mutationMock.result.data.updateExperiment;
+    render(<Subject mocks={[mock, mutationMock]} />);
+
+    const saveButton = await screen.findByRole("button", { name: "Save" });
+    fireEvent.click(saveButton);
+
+    const feedback = await screen.findByRole("alert");
+    expect(feedback).toHaveTextContent(JSON.stringify({ "*": SUBMIT_ERROR }));
+  });
+
+  it("handles experiment form submission with server API error", async () => {
+    // @ts-ignore - errors is not typed on result
+    mutationMock.result.errors = [new Error("an error")];
+    render(<Subject mocks={[mock, mutationMock]} />);
+
+    const saveButton = await screen.findByRole("button", { name: "Save" });
+    fireEvent.click(saveButton);
+
+    const feedback = await screen.findByRole("alert");
+    expect(feedback).toHaveTextContent(JSON.stringify({ "*": SUBMIT_ERROR }));
   });
 });
 
-// Mocking form component because validation is exercised in its own tests.
+const { mock, experiment } = mockExperimentQuery("demo-slug");
+
+let mutationMock: MockedResponse;
+let mockSubmitData: Record<string, string> = {};
+const mockSubmit = jest.fn();
+
+jest.mock("@reach/router", () => ({
+  ...jest.requireActual("@reach/router"),
+  navigate: jest.fn(),
+}));
+
 jest.mock("../FormOverview", () => ({
   __esModule: true,
   default: (props: React.ComponentProps<typeof FormOverview>) => {
-    const handleSubmit = (ev: React.FormEvent) => {
-      ev.preventDefault();
+    const handleSubmit = () => {
       mockSubmit();
       props.onSubmit(mockSubmitData, false);
     };
-    const handleNext = (ev: React.FormEvent) => {
-      ev.preventDefault();
+    const handleNext = () => {
       mockSubmit();
       props.onSubmit(mockSubmitData, true);
     };
     return (
       <div data-testid="FormOverview">
-        <div data-testid="submitErrors">
-          {JSON.stringify(props.submitErrors)}
-        </div>
-        <button data-testid="submit" onClick={handleSubmit} />
-        <button data-testid="next" onClick={handleNext} />
+        <div role="alert">{JSON.stringify(props.submitErrors)}</div>
+        <button onClick={handleSubmit}>Save</button>
+        <button onClick={handleNext}>Save and Continue</button>
       </div>
     );
   },

@@ -6,9 +6,8 @@ import { withLinks } from "@storybook/addon-links";
 import { withQuery } from "@storybook/addon-queryparams";
 import { storiesOf } from "@storybook/react";
 import React from "react";
-import PageEditOverview from ".";
 import { mockExperimentQuery } from "../../lib/mocks";
-import { RouterSlugProvider } from "../../lib/test-utils";
+import { Subject } from "./mocks";
 
 const { mock } = mockExperimentQuery("demo-slug");
 const { mock: mockMissingFields } = mockExperimentQuery("demo-slug", {
@@ -25,21 +24,9 @@ const { mock: mockMissingFields } = mockExperimentQuery("demo-slug", {
 storiesOf("pages/EditOverview", module)
   .addDecorator(withLinks)
   .addDecorator(withQuery)
-  .add("basic", () => (
-    <RouterSlugProvider mocks={[mock]}>
-      <PageEditOverview />
-    </RouterSlugProvider>
-  ))
-  .add(
-    "missing fields",
-    () => (
-      <RouterSlugProvider mocks={[mockMissingFields]}>
-        <PageEditOverview />
-      </RouterSlugProvider>
-    ),
-    {
-      query: {
-        "show-errors": true,
-      },
+  .add("basic", () => <Subject mocks={[mock]} />)
+  .add("missing fields", () => <Subject mocks={[mockMissingFields]} />, {
+    query: {
+      "show-errors": true,
     },
-  );
+  });
