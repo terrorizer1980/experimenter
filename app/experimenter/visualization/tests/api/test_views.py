@@ -61,7 +61,7 @@ class TestVisualizationView(TestCase):
         primary_metric = f"{primary_outcome}_ever_used"
 
         for branch in branches:
-            formatted_data_with_pop[branch]["branch_data"][primary_metric] = {
+            formatted_data_with_pop[branch]["branch_data"]["other"][primary_metric] = {
                 "absolute": {
                     "first": {**range_data, **{"count": 48}},
                     "all": [{**range_data, **{"count": 48}}],
@@ -69,7 +69,7 @@ class TestVisualizationView(TestCase):
                 "difference": {"all": [], "first": {}},
                 "relative_uplift": {"all": [], "first": {}},
             }
-            formatted_data_without_pop[branch]["branch_data"][primary_metric] = {
+            formatted_data_without_pop[branch]["branch_data"]["other"][primary_metric] = {
                 "absolute": {
                     "first": {**range_data, **{"window_index": "1"}},
                     "all": [{**range_data, **{"window_index": "1"}}],

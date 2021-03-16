@@ -41,6 +41,30 @@ PRIMARY_METRIC_SUFFIX = "_ever_used"
 STATISTICS_FOLDER = "statistics"
 METADATA_FOLDER = "metadata"
 
+GROUPED_METRICS = [
+    {
+        "name": "search_metrics",
+        "metrics": [
+            "searches_with_ads",
+            "search_count",
+            "organic_search_count",
+            "tagged_follow_on_search_count",
+            "tagged_search_count",
+        ],
+    },
+    {
+        "name": "usage_metrics",
+        "metrics": [
+            "uri_count",
+            "active_hours",
+        ],
+    },
+]
+GROUPED_METRICS_LOOKUP = {}
+for group in GROUPED_METRICS:
+    for metric in group["metrics"]:
+        GROUPED_METRICS_LOOKUP[metric] = group["name"]
+
 
 def load_data_from_gcs(path):
     return (
@@ -103,10 +127,11 @@ def append_conversion_count(results, primary_metrics_set):
     for branch in results:
         branch_data = results[branch][BRANCH_DATA]
         for primary_metric in primary_metrics_set:
-            absolute_user_counts = branch_data[Metric.USER_COUNT][
+            group = GROUPED_METRICS_LOOKUP.get(primary_metric, "other")
+            absolute_user_counts = branch_data[group][Metric.USER_COUNT][
                 BranchComparison.ABSOLUTE
             ]
-            absolute_primary_metric_vals = branch_data[primary_metric][
+            absolute_primary_metric_vals = branch_data[group][primary_metric][
                 BranchComparison.ABSOLUTE
             ]
 
@@ -155,6 +180,7 @@ def generate_results_object(data, experiment, window="overall"):
     result_metrics, primary_metrics_set = get_results_metrics_map(
         experiment.primary_outcomes, experiment.secondary_outcomes
     )
+
     for row in data:
         branch = row.get("branch")
         metric = row.get("metric")
@@ -169,15 +195,24 @@ def generate_results_object(data, experiment, window="overall"):
             and statistic in result_metrics[metric]
             or statistic == Statistic.MEAN
         ):
+            GROUP = GROUPED_METRICS_LOOKUP.get(metric, "other")
+
             results[branch] = results.get(
                 branch,
                 {
                     "is_control": experiment.reference_branch.slug == branch,
-                    BRANCH_DATA: {},
+                    BRANCH_DATA: {
+                        GROUP: {},
+                    },
                 },
             )
 
-            results[branch][BRANCH_DATA][metric] = results[branch][BRANCH_DATA].get(
+            if GROUP not in results[branch][BRANCH_DATA]:
+                results[branch][BRANCH_DATA][GROUP] = {}
+
+            results[branch][BRANCH_DATA][GROUP][metric] = results[branch][BRANCH_DATA][
+                GROUP
+            ].get(
                 metric,
                 {
                     BranchComparison.ABSOLUTE: {"all": [], "first": {}},
@@ -187,12 +222,12 @@ def generate_results_object(data, experiment, window="overall"):
             )
 
             if metric == Metric.USER_COUNT and statistic == Statistic.PERCENT:
-                results[branch][BRANCH_DATA][Metric.USER_COUNT]["percent"] = point
+                results[branch][BRANCH_DATA][GROUP][Metric.USER_COUNT]["percent"] = point
                 continue
 
             comparison = row.get("comparison", BranchComparison.ABSOLUTE)
             if comparison == BranchComparison.DIFFERENCE and lower and upper:
-                results[branch][BRANCH_DATA][metric].update(
+                results[branch][BRANCH_DATA][GROUP][metric].update(
                     {"significance": compute_significance(lower, upper)}
                 )
             data_point = {
@@ -203,11 +238,15 @@ def generate_results_object(data, experiment, window="overall"):
             if window == "weekly":
                 data_point["window_index"] = window_index
 
-            results_at_comparison = results[branch][BRANCH_DATA][metric][comparison]
+            results_at_comparison = results[branch][BRANCH_DATA][GROUP][metric][
+                comparison
+            ]
             if len(results_at_comparison["all"]) == 0:
                 results_at_comparison["first"] = data_point
 
-            results[branch][BRANCH_DATA][metric][comparison]["all"].append(data_point)
+            results[branch][BRANCH_DATA][GROUP][metric][comparison]["all"].append(
+                data_point
+            )
 
             if metric not in result_metrics and window == "overall":
                 metric_title = " ".join([word.title() for word in metric.split("_")])
