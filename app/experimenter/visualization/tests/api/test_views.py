@@ -49,9 +49,7 @@ class TestVisualizationView(TestCase):
             json_data,
         )
 
-    def add_outcome_data(
-        self, data, formatted_data_with_pop, formatted_data_without_pop, primary_outcome
-    ):
+    def add_outcome_data(self, data, overall_data, weekly_data, primary_outcome):
         range_data = {
             "point": 4,
             "upper": 8,
@@ -61,7 +59,7 @@ class TestVisualizationView(TestCase):
         primary_metric = f"{primary_outcome}_ever_used"
 
         for branch in branches:
-            formatted_data_with_pop[branch]["branch_data"][primary_metric] = {
+            overall_data[branch]["branch_data"][primary_metric] = {
                 "absolute": {
                     "first": {**range_data, **{"count": 48}},
                     "all": [{**range_data, **{"count": 48}}],
@@ -70,7 +68,7 @@ class TestVisualizationView(TestCase):
                 "relative_uplift": {"all": [], "first": {}},
                 "significance": {"overall": {}, "weekly": {}},
             }
-            formatted_data_without_pop[branch]["branch_data"][primary_metric] = {
+            weekly_data[branch]["branch_data"][primary_metric] = {
                 "absolute": {
                     "first": {**range_data, **{"window_index": "1"}},
                     "all": [{**range_data, **{"window_index": "1"}}],
@@ -94,14 +92,12 @@ class TestVisualizationView(TestCase):
     def add_all_outcome_data(
         self,
         data,
-        formatted_data_with_pop,
-        formatted_data_without_pop,
+        overall_data,
+        weekly_data,
         primary_outcomes,
     ):
         for primary_outcome in primary_outcomes:
-            self.add_outcome_data(
-                data, formatted_data_with_pop, formatted_data_without_pop, primary_outcome
-            )
+            self.add_outcome_data(data, overall_data, weekly_data, primary_outcome)
 
     @parameterized.expand(
         [
@@ -116,14 +112,14 @@ class TestVisualizationView(TestCase):
 
         (
             DATA_WITHOUT_POPULATION_PERCENTAGE,
-            FORMATTED_DATA_WITHOUT_POPULATION_PERCENTAGE,
-            FORMATTED_DATA_WITH_POPULATION_PERCENTAGE,
+            WEEKLY_DATA,
+            OVERALL_DATA,
         ) = TestConstants.get_test_data()
 
         FULL_DATA = {
             "daily": DATA_WITHOUT_POPULATION_PERCENTAGE,
-            "weekly": FORMATTED_DATA_WITHOUT_POPULATION_PERCENTAGE,
-            "overall": FORMATTED_DATA_WITH_POPULATION_PERCENTAGE,
+            "weekly": WEEKLY_DATA,
+            "overall": OVERALL_DATA,
             "other_metrics": {
                 "some_count": "Some Count",
                 "another_count": "Another Count",
@@ -156,8 +152,8 @@ class TestVisualizationView(TestCase):
 
         self.add_all_outcome_data(
             DATA_WITHOUT_POPULATION_PERCENTAGE,
-            FORMATTED_DATA_WITH_POPULATION_PERCENTAGE,
-            FORMATTED_DATA_WITHOUT_POPULATION_PERCENTAGE,
+            OVERALL_DATA,
+            WEEKLY_DATA,
             experiment.primary_outcomes,
         )
 

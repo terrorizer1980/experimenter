@@ -1,9 +1,11 @@
 import json
 import os
+from typing import List
 
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.shortcuts import get_object_or_404
+from pydantic import BaseModel, create_model
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -34,6 +36,33 @@ class Statistic:
     BINOMIAL = "binomial"
     MEAN = "mean"
     COUNT = "count"
+
+
+class DataPoint(BaseModel):
+    lower: int = None
+    upper: int = None
+    point: int = None
+    window_index: str = None
+    count: int = None
+
+    def set_window_index(self, window_index):
+        self.window_index = window_index
+
+    def has_bounds(self):
+        return self.lower and self.upper
+
+
+class BranchComparisonData(BaseModel):
+    all: List[DataPoint] = []
+    first: DataPoint = {}
+
+
+class MetricData(BaseModel):
+    absolute: BranchComparisonData
+    difference: BranchComparisonData
+    relative_uplift: BranchComparisonData
+    significance: dict
+    percent: float = None
 
 
 BRANCH_DATA = "branch_data"
@@ -128,10 +157,10 @@ def append_population_percentages(data):
         )
 
 
-def compute_significance(lower, upper):
-    if max(lower, upper, 0) == 0:
+def compute_significance(data_point):
+    if max(data_point.lower, data_point.upper, 0) == 0:
         return Significance.NEGATIVE
-    if min(lower, upper, 0) == 0:
+    if min(data_point.lower, data_point.upper, 0) == 0:
         return Significance.POSITIVE
     else:
         return Significance.NEUTRAL
@@ -153,6 +182,7 @@ def append_conversion_count(results, primary_metrics_set):
             conversion_count = population_count * conversion_percent
 
             absolute_primary_metric_vals["first"]["count"] = conversion_count
+            absolute_primary_metric_vals["all"][0]["count"] = conversion_count
 
 
 def get_week_x_retention(week_index, weekly_data):
@@ -185,66 +215,71 @@ def process_data_for_consumption(overall_data, weekly_data, experiment):
 
 
 def generate_results_object(data, experiment, window="overall"):
-    results = {}
+    # Capture the metrics and branches to be used as pydantic keys
+    branches = {}
+    metrics = {}
+    for row in data:
+        branches[row.get("branch")] = {}
+        metrics[row.get("metric")] = MetricData(
+            absolute=BranchComparisonData(),
+            difference=BranchComparisonData(),
+            relative_uplift=BranchComparisonData(),
+            significance={"overall": {}, "weekly": {}},
+        )
 
+    BranchData = create_model("BranchData", **metrics)
+
+    class Branch(BaseModel):
+        is_control: bool = False
+        branch_data: BranchData
+
+    for branch in branches:
+        branches[branch] = Branch(is_control=False, branch_data=BranchData())
+
+    ResultsObjectModel = create_model("ResultsObjectModel", **branches)
+
+    results_test = ResultsObjectModel()
     result_metrics, primary_metrics_set, other_metrics = get_results_metrics_map(
         data, experiment.primary_outcomes, experiment.secondary_outcomes
     )
     for row in data:
         branch = row.get("branch")
         metric = row.get("metric")
-        lower = row.get("lower")
-        upper = row.get("upper")
-        point = row.get("point")
         statistic = row.get("statistic")
+        data_point = DataPoint(
+            lower=row.get("lower"), upper=row.get("upper"), point=row.get("point")
+        )
 
         # For "overall" data, set window_index to 1 for uniformity
         window_index = 1 if window == "overall" else row.get("window_index")
 
         if metric in result_metrics and statistic in result_metrics[metric]:
-            results[branch] = results.get(
-                branch,
-                {
-                    "is_control": experiment.reference_branch.slug == branch,
-                    BRANCH_DATA: {},
-                },
-            )
-
-            results[branch][BRANCH_DATA][metric] = results[branch][BRANCH_DATA].get(
-                metric,
-                {
-                    BranchComparison.ABSOLUTE: {"all": [], "first": {}},
-                    BranchComparison.DIFFERENCE: {"all": [], "first": {}},
-                    BranchComparison.UPLIFT: {"all": [], "first": {}},
-                    "significance": {"overall": {}, "weekly": {}},
-                },
-            )
+            branch_obj = getattr(results_test, branch)
+            branch_obj.is_control = experiment.reference_branch.slug == branch
 
             if metric == Metric.USER_COUNT and statistic == Statistic.PERCENT:
-                results[branch][BRANCH_DATA][Metric.USER_COUNT]["percent"] = point
+                user_count_data = getattr(branch_obj.branch_data, Metric.USER_COUNT)
+                user_count_data.percent = data_point.point
                 continue
 
             comparison = row.get("comparison", BranchComparison.ABSOLUTE)
-            if comparison == BranchComparison.DIFFERENCE and lower and upper:
-                results[branch][BRANCH_DATA][metric]["significance"][window][
-                    window_index
-                ] = compute_significance(lower, upper)
+            metric_data = getattr(branch_obj.branch_data, metric)
+            if comparison == BranchComparison.DIFFERENCE and data_point.has_bounds():
+                metric_data.significance[window][window_index] = compute_significance(
+                    data_point
+                )
 
-            data_point = {
-                "lower": lower,
-                "upper": upper,
-                "point": point,
-            }
             if window == "weekly":
-                data_point["window_index"] = window_index
+                data_point.set_window_index(window_index)
 
-            results_at_comparison = results[branch][BRANCH_DATA][metric][comparison]
-            if len(results_at_comparison["all"]) == 0:
-                results_at_comparison["first"] = data_point
+            comparison_data = getattr(metric_data, comparison)
+            data_point = data_point.dict(exclude_unset=True)
+            if len(comparison_data.all) == 0:
+                comparison_data.first = data_point
 
-            results[branch][BRANCH_DATA][metric][comparison]["all"].append(data_point)
+            comparison_data.all.append(data_point)
 
-    return results, primary_metrics_set, other_metrics
+    return results_test.dict(exclude_none=True), primary_metrics_set, other_metrics
 
 
 def get_data(slug, window):
