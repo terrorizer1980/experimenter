@@ -14,8 +14,15 @@ import fetchMock from "jest-fetch-mock";
 import React from "react";
 import { BASE_PATH } from "../../lib/constants";
 import { mockExperimentQuery } from "../../lib/mocks";
-import { NimbusExperimentStatus } from "../../types/globalTypes";
-import { createMutationMock, Subject } from "./mocks";
+import {
+  NimbusExperimentPublishStatus,
+  NimbusExperimentStatus,
+} from "../../types/globalTypes";
+import {
+  createPublishStatusMutationMock,
+  createStatusMutationMock,
+  Subject,
+} from "./mocks";
 
 jest.mock("@reach/router", () => ({
   ...(jest.requireActual("@reach/router") as any),
@@ -114,7 +121,7 @@ describe("PageRequestReview", () => {
 
   it("indicates status in review", async () => {
     const { mock } = mockExperimentQuery("demo-slug", {
-      status: NimbusExperimentStatus.REVIEW,
+      publishStatus: NimbusExperimentPublishStatus.APPROVED,
     });
     render(<Subject mocks={[mock]} />);
     await waitFor(() =>
@@ -134,7 +141,7 @@ describe("PageRequestReview", () => {
     const { mock, experiment } = mockExperimentQuery("demo-slug", {
       status: NimbusExperimentStatus.DRAFT,
     });
-    const mutationMock = createMutationMock(
+    const mutationMock = createStatusMutationMock(
       experiment.id!,
       NimbusExperimentStatus.PREVIEW,
     );
@@ -149,7 +156,7 @@ describe("PageRequestReview", () => {
     const { mock, experiment } = mockExperimentQuery("demo-slug", {
       status: NimbusExperimentStatus.DRAFT,
     });
-    const mutationMock = createMutationMock(experiment.id!);
+    const mutationMock = createStatusMutationMock(experiment.id!);
     render(<Subject mocks={[mock, mutationMock]} />);
     await launchFromDraftToReview();
   });
@@ -158,7 +165,7 @@ describe("PageRequestReview", () => {
     const { mock, experiment } = mockExperimentQuery("demo-slug", {
       status: NimbusExperimentStatus.DRAFT,
     });
-    const mutationMock = createMutationMock(
+    const mutationMock = createStatusMutationMock(
       experiment.id!,
       NimbusExperimentStatus.PREVIEW,
     );
@@ -179,7 +186,7 @@ describe("PageRequestReview", () => {
     const { mock, experiment } = mockExperimentQuery("demo-slug", {
       status: NimbusExperimentStatus.PREVIEW,
     });
-    const mutationMock = createMutationMock(
+    const mutationMock = createStatusMutationMock(
       experiment.id!,
       NimbusExperimentStatus.DRAFT,
     );
@@ -194,7 +201,7 @@ describe("PageRequestReview", () => {
     const { mock, experiment } = mockExperimentQuery("demo-slug", {
       status: NimbusExperimentStatus.DRAFT,
     });
-    const mutationMock = createMutationMock(experiment.id!);
+    const mutationMock = createStatusMutationMock(experiment.id!);
     // @ts-ignore - intentionally breaking this type for error handling
     delete mutationMock.result.data.updateExperiment;
     render(<Subject mocks={[mock, mutationMock]} />);
@@ -208,7 +215,7 @@ describe("PageRequestReview", () => {
     const { mock, experiment } = mockExperimentQuery("demo-slug", {
       status: NimbusExperimentStatus.DRAFT,
     });
-    const mutationMock = createMutationMock(experiment.id!);
+    const mutationMock = createStatusMutationMock(experiment.id!);
     mutationMock.result.errors = [new Error("Boo")];
     render(<Subject mocks={[mock, mutationMock]} />);
     await launchFromDraftToReview();
@@ -221,7 +228,7 @@ describe("PageRequestReview", () => {
     const { mock, experiment } = mockExperimentQuery("demo-slug", {
       status: NimbusExperimentStatus.DRAFT,
     });
-    const mutationMock = createMutationMock(experiment.id!);
+    const mutationMock = createPublishStatusMutationMock(experiment.id!);
     const errorMessage = "Something went very wrong.";
     mutationMock.result.data.updateExperiment.message = {
       status: [errorMessage],
@@ -254,7 +261,7 @@ describe("PageRequestReview", () => {
 
   it("will not allow submitting if already in review", async () => {
     const { mock } = mockExperimentQuery("demo-slug", {
-      status: NimbusExperimentStatus.REVIEW,
+      publishStatus: NimbusExperimentPublishStatus.APPROVED,
     });
     render(<Subject mocks={[mock]} />);
     await waitFor(() =>

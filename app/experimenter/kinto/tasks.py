@@ -84,7 +84,7 @@ def handle_rejection(kinto_client):
     if experiment.status == NimbusExperiment.Status.LIVE and experiment.is_end_requested:
         experiment.is_end_requested = False
         has_changes = True
-    elif experiment.status == NimbusExperiment.Status.ACCEPTED:
+    elif experiment.publish_status == NimbusExperiment.PublishStatus.WAITING:
         experiment.status = NimbusExperiment.Status.DRAFT
         has_changes = True
 
@@ -199,17 +199,13 @@ def nimbus_check_experiments_are_live():
     """
     metrics.incr("check_experiments_are_live.started")
 
-    accepted_experiments = NimbusExperiment.objects.filter(
-        status=NimbusExperiment.Status.ACCEPTED
-    )
-
     for collection in NimbusExperiment.KINTO_APPLICATION_COLLECTION.values():
         kinto_client = KintoClient(collection)
 
         records = kinto_client.get_main_records()
         record_ids = [r.get("id") for r in records]
 
-        for experiment in accepted_experiments:
+        for experiment in NimbusExperiment.objects.waiting_queue():
             if experiment.slug in record_ids:
                 logger.info(
                     f"{experiment} status is being updated to live".format(

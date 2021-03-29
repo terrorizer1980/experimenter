@@ -19,7 +19,10 @@ from experimenter.projects.models import Project
 
 class NimbusExperimentManager(models.Manager):
     def launch_queue(self, application):
-        return self.filter(status=NimbusExperiment.Status.REVIEW, application=application)
+        return self.filter(
+            status=NimbusExperiment.PublishStatus.APPROVED,
+            application=application
+        )
 
     def pause_queue(self, application):
         return self.filter(
@@ -36,6 +39,11 @@ class NimbusExperimentManager(models.Manager):
             status=NimbusExperiment.Status.LIVE,
             application=application,
             is_end_requested=True,
+        )
+
+    def waiting_queue(self):
+        return self.filter(
+            publish_status=NimbusExperiment.PublishStatus.WAITING
         )
 
 
@@ -176,7 +184,7 @@ class NimbusExperiment(NimbusConstants, models.Model):
     @property
     def start_date(self):
         start_changelog = self.changes.filter(
-            old_status=self.Status.ACCEPTED, new_status=self.Status.LIVE
+            old_status=self.Status.DRAFT, new_status=self.Status.LIVE
         )
         if start_changelog.exists():
             return start_changelog.get().changed_on
@@ -244,7 +252,7 @@ class NimbusExperiment(NimbusConstants, models.Model):
     def should_allocate_bucket_range(self):
         return self.status in [
             NimbusExperiment.Status.PREVIEW,
-            NimbusExperiment.Status.REVIEW,
+            NimbusExperiment.PublishStatus.APPROVED,
         ]
 
     def allocate_bucket_range(self):

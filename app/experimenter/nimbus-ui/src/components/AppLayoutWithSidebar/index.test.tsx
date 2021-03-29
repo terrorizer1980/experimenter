@@ -13,16 +13,21 @@ import {
   mockGetStatus,
 } from "../../lib/mocks";
 import { renderWithRouter, RouterSlugProvider } from "../../lib/test-utils";
-import { NimbusExperimentStatus } from "../../types/globalTypes";
+import {
+  NimbusExperimentPublishStatus,
+  NimbusExperimentStatus,
+} from "../../types/globalTypes";
 import App from "../App";
 
 const { mock } = mockExperimentQuery("my-special-slug");
 
 const Subject = ({
-  status = NimbusExperimentStatus.DRAFT,
+  status,
+  publishStatus,
   review,
 }: RouteComponentProps & {
   status?: NimbusExperimentStatus;
+  publishStatus?: NimbusExperimentPublishStatus;
   review?: {
     ready: boolean;
     invalidPages: string[];
@@ -31,7 +36,7 @@ const Subject = ({
   <RouterSlugProvider mocks={[mock]} path="/my-special-slug/edit">
     <AppLayoutWithSidebar
       {...{
-        status: mockGetStatus(status),
+        status: mockGetStatus(status || publishStatus),
         review,
       }}
     >
@@ -147,8 +152,17 @@ describe("AppLayoutWithSidebar", () => {
       expect(screen.queryByTestId("nav-request-review")).toBeInTheDocument();
     });
 
-    it("when in review, disables all edit page links", async () => {
-      render(<Subject status={NimbusExperimentStatus.REVIEW} />);
+    it("when in preview, disables all edit page links", async () => {
+      render(<Subject status={NimbusExperimentStatus.PREVIEW} />);
+
+      // In preview these should all not be <a> tags, but instead <span>s
+      ["overview", "branches", "metrics", "audience"].forEach((slug) => {
+        expect(screen.getByTestId(`nav-edit-${slug}`).tagName).toEqual("SPAN");
+      });
+    });
+
+    it("when in (publish status) review, disables all edit page links", async () => {
+      render(<Subject publishStatus={NimbusExperimentPublishStatus.REVIEW} />);
 
       // In review these should all not be <a> tags, but instead <span>s
       ["overview", "branches", "metrics", "audience"].forEach((slug) => {

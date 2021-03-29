@@ -35,6 +35,7 @@ import {
   ExperimentInput,
   NimbusDocumentationLinkTitle,
   NimbusExperimentApplication,
+  NimbusExperimentPublishStatus,
   NimbusExperimentStatus,
   NimbusFeatureConfigApplication,
 } from "../types/globalTypes";
@@ -258,7 +259,8 @@ export function mockExperiment<
       },
       name: "Open-architected background installation",
       slug: "open-architected-background-installation",
-      status: "DRAFT",
+      status: NimbusExperimentStatus.DRAFT,
+      publishStatus: NimbusExperimentPublishStatus.IDLE,
       isEndRequested: false,
       monitoringDashboardUrl: "https://grafana.telemetry.mozilla.org",
       hypothesis: "Realize material say pretty.",
@@ -389,8 +391,18 @@ export const mockExperimentMutation = (
   };
 };
 
-export const mockGetStatus = (status: NimbusExperimentStatus | null) => {
-  const { experiment } = mockExperimentQuery("boo", { status });
+export const mockGetStatus = (
+  status?: NimbusExperimentStatus | NimbusExperimentPublishStatus,
+) => {
+  const modifiers: Partial<getExperiment_experimentBySlug | null> = {};
+
+  if (Object.keys(NimbusExperimentPublishStatus).includes(status)) {
+    modifiers.publishStatus = status as NimbusExperimentPublishStatus;
+  } else {
+    modifiers.status = status as NimbusExperimentStatus;
+  }
+
+  const { experiment } = mockExperimentQuery("boo", modifiers);
   return getStatus(experiment);
 };
 
@@ -410,6 +422,7 @@ export function mockSingleDirectoryExperiment(
       "https://grafana.telemetry.mozilla.org/d/XspgvdxZz/experiment-enrollment?orgId=1&var-experiment_id=bug-1668861-pref-measure-set-to-default-adoption-impact-of-chang-release-81-83",
     name: "Open-architected background installation",
     status: NimbusExperimentStatus.COMPLETE,
+    publishStatus: NimbusExperimentPublishStatus.IDLE,
     featureConfig: {
       slug: "newtab",
       name: "New tab",
@@ -435,11 +448,11 @@ export function mockDirectoryExperiments(
       computedEndDate: null,
     },
     {
-      status: NimbusExperimentStatus.REVIEW,
+      publishStatus: NimbusExperimentPublishStatus.APPROVED,
       computedEndDate: null,
     },
     {
-      status: NimbusExperimentStatus.REVIEW,
+      publishStatus: NimbusExperimentPublishStatus.APPROVED,
     },
     {
       status: NimbusExperimentStatus.LIVE,

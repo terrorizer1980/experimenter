@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { RouteComponentProps, useParams } from "@reach/router";
 import React from "react";
 import Col from "react-bootstrap/Col";
@@ -46,7 +50,7 @@ const otherMetricsToFriendlyName = (
   return newMap;
 };
 
-type AppLayoutSidebarLockedProps = {
+type AppLayoutSidebarReleasedProps = {
   testid?: string;
   children: React.ReactNode;
   status: StatusCheck;
@@ -57,16 +61,16 @@ type AppLayoutSidebarLockedProps = {
   experiment: getExperiment_experimentBySlug;
 } & RouteComponentProps;
 
-export const AppLayoutSidebarLocked = ({
+export const AppLayoutSidebarReleased = ({
   children,
-  testid = "AppLayoutSidebarLocked",
+  testid = "AppLayoutSidebarReleased",
   status,
   analysis,
   analysisRequired,
   analysisLoadingInSidebar = false,
   analysisError,
   experiment,
-}: AppLayoutSidebarLockedProps) => {
+}: AppLayoutSidebarReleasedProps) => {
   const { slug } = useParams();
   const { primaryOutcomes, secondaryOutcomes } = useOutcomes(experiment);
   const primaryMetrics = outcomeToMapping(primaryOutcomes);
@@ -277,4 +281,4 @@ export const AppLayoutSidebarLocked = ({
   );
 };
 
-export default AppLayoutSidebarLocked;
+export default AppLayoutSidebarReleased;

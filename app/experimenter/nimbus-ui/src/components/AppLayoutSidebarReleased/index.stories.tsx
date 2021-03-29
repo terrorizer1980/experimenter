@@ -5,7 +5,7 @@
 import { withLinks } from "@storybook/addon-links";
 import { storiesOf } from "@storybook/react";
 import React from "react";
-import AppLayoutSidebarLocked from ".";
+import AppLayoutSidebarReleased from ".";
 import { mockExperimentQuery, mockGetStatus } from "../../lib/mocks";
 import { RouterSlugProvider } from "../../lib/test-utils";
 import { mockAnalysis } from "../../lib/visualization/mocks";
@@ -13,34 +13,34 @@ import { NimbusExperimentStatus } from "../../types/globalTypes";
 
 const { experiment } = mockExperimentQuery("demo-slug");
 
-storiesOf("components/AppLayoutSidebarLocked", module)
+storiesOf("components/AppLayoutSidebarReleased", module)
   .addDecorator(withLinks)
   .add("analysis results loading", () => (
     <RouterSlugProvider>
-      <AppLayoutSidebarLocked
+      <AppLayoutSidebarReleased
         status={mockGetStatus(NimbusExperimentStatus.LIVE)}
         analysisError={undefined}
         analysisLoadingInSidebar
         {...{ experiment }}
       >
         <p>App contents go here</p>
-      </AppLayoutSidebarLocked>
+      </AppLayoutSidebarReleased>
     </RouterSlugProvider>
   ))
   .add("analysis results error", () => (
     <RouterSlugProvider>
-      <AppLayoutSidebarLocked
+      <AppLayoutSidebarReleased
         status={mockGetStatus(NimbusExperimentStatus.LIVE)}
         analysisError={new Error("Boop")}
         {...{ experiment }}
       >
         <p>App contents go here</p>
-      </AppLayoutSidebarLocked>
+      </AppLayoutSidebarReleased>
     </RouterSlugProvider>
   ))
   .add("has analysis results", () => (
     <RouterSlugProvider>
-      <AppLayoutSidebarLocked
+      <AppLayoutSidebarReleased
         status={mockGetStatus(NimbusExperimentStatus.COMPLETE)}
         analysisError={undefined}
         analysis={{
@@ -53,6 +53,6 @@ storiesOf("components/AppLayoutSidebarLocked", module)
         {...{ experiment }}
       >
         <p>App contents go here</p>
-      </AppLayoutSidebarLocked>
+      </AppLayoutSidebarReleased>
     </RouterSlugProvider>
   ));

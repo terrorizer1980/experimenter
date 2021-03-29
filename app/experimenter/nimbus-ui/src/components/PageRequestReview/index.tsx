@@ -15,6 +15,7 @@ import { getStatus } from "../../lib/experiment";
 import { getExperiment_experimentBySlug } from "../../types/getExperiment";
 import {
   ExperimentInput,
+  NimbusExperimentPublishStatus,
   NimbusExperimentStatus,
 } from "../../types/globalTypes";
 import { updateExperiment_updateExperiment as UpdateExperiment } from "../../types/updateExperiment";
@@ -104,35 +105,52 @@ const PageRequestReview = ({
       [
         NimbusExperimentStatus.PREVIEW,
         NimbusExperimentStatus.DRAFT,
-        NimbusExperimentStatus.REVIEW,
-      ].map((status: NimbusExperimentStatus) => async () => {
-        try {
-          setSubmitError(null);
+        NimbusExperimentPublishStatus.APPROVED,
+      ].map(
+        (
+          status: NimbusExperimentStatus | NimbusExperimentPublishStatus,
+        ) => async () => {
+          const input: Record<string, any> = {
+            id: currentExperiment.current!.id,
+          };
 
-          const result = await updateExperiment({
-            variables: {
-              input: {
-                id: currentExperiment.current!.id,
-                status,
+          // If the user requests launch and the publish status needs to
+          // update to 'approved'
+          if (Object.keys(NimbusExperimentPublishStatus).includes(status)) {
+            input.publishStatus = status;
+          } else {
+            input.status = status;
+          }
+
+          try {
+            setSubmitError(null);
+
+            const result = await updateExperiment({
+              variables: {
+                input,
               },
-            },
-          });
+            });
 
-          if (!result.data?.updateExperiment) {
-            throw new Error(SUBMIT_ERROR);
+            if (!result.data?.updateExperiment) {
+              throw new Error(SUBMIT_ERROR);
+            }
+
+            const { message } = result.data.updateExperiment;
+
+            if (
+              message &&
+              message !== "success" &&
+              typeof message === "object"
+            ) {
+              return void setSubmitError(message.status.join(", "));
+            }
+
+            refetchReview.current!();
+          } catch (error) {
+            setSubmitError(SUBMIT_ERROR);
           }
-
-          const { message } = result.data.updateExperiment;
-
-          if (message && message !== "success" && typeof message === "object") {
-            return void setSubmitError(message.status.join(", "));
-          }
-
-          refetchReview.current!();
-        } catch (error) {
-          setSubmitError(SUBMIT_ERROR);
-        }
-      }),
+        },
+      ),
     [updateExperiment, currentExperiment],
   );
 
@@ -188,7 +206,7 @@ const PageRequestReview = ({
               />
             )}
 
-            {status.review && (
+            {status.approved && (
               <Alert
                 data-testid="submit-success"
                 variant="success"
