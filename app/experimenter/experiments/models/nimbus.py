@@ -113,6 +113,9 @@ class NimbusExperiment(NimbusConstants, models.Model):
     def get_absolute_url(self):
         return reverse("nimbus-detail", kwargs={"slug": self.slug})
 
+    def has_state(self, state):
+        return type(self).objects.filter(id=self.id).filter(state).exists()
+
     @property
     def experiment_url(self):
         return urljoin(

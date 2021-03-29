@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 
 @dataclass
@@ -127,6 +128,15 @@ class NimbusConstants(object):
         ),
     }
     PUBLISH_STATUS_ALLOWS_UPDATE = (PublishStatus.IDLE,)
+
+    # State Predicates
+    IS_LAUNCHING = Q(status=Status.DRAFT, publish_status=PublishStatus.WAITING)
+    IS_ENDING = Q(
+        status=Status.LIVE,
+        publish_status=PublishStatus.WAITING,
+        is_end_requested=True,
+    )
+    SHOULD_TIMEOUT = Q(IS_LAUNCHING | IS_ENDING)
 
     class Application(models.TextChoices):
         DESKTOP = "firefox-desktop"

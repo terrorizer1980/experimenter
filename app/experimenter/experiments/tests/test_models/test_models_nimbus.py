@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 
 from django.conf import settings
+from django.db.models import Q
 from django.test import TestCase
 from django.utils import timezone
 from parameterized import parameterized_class
@@ -480,6 +481,34 @@ class TestNimbusExperiment(TestCase):
 
         # Timeout should be the latest changelog entry.
         self.assertEqual(experiment.changes.latest_timeout(), experiment.latest_change())
+
+    def test_has_state_true(self):
+        experiment = NimbusExperimentFactory.create_with_status(
+            NimbusExperiment.Status.DRAFT,
+            publish_status=NimbusExperiment.PublishStatus.WAITING,
+        )
+        self.assertTrue(
+            experiment.has_state(
+                Q(
+                    status=NimbusExperiment.Status.DRAFT,
+                    publish_status=NimbusExperiment.PublishStatus.WAITING,
+                )
+            )
+        )
+
+    def test_has_state_false(self):
+        experiment = NimbusExperimentFactory.create_with_status(
+            NimbusExperiment.Status.DRAFT,
+            publish_status=NimbusExperiment.PublishStatus.WAITING,
+        )
+        self.assertFalse(
+            experiment.has_state(
+                Q(
+                    status=NimbusExperiment.Status.DRAFT,
+                    publish_status=NimbusExperiment.PublishStatus.IDLE,
+                )
+            )
+        )
 
 
 class TestNimbusBranch(TestCase):
