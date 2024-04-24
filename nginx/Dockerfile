@@ -1,4 +1,4 @@
-FROM nginx:1.19.8
+FROM nginx:1.26
 
 RUN rm /etc/nginx/nginx.conf
 COPY nginx.conf /etc/nginx/
