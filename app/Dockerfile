@@ -70,7 +70,7 @@ RUN yarn workspace @experimenter/nimbus-ui build
 
 
 # Deploy image
-FROM python:3.9-slim AS deploy
+FROM python:3.13.0b2-slim AS deploy
 
 WORKDIR /app
 EXPOSE 7001
