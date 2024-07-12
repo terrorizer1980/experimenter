@@ -38,7 +38,7 @@
     "@sentry/browser": "^6.0.2",
     "@types/react-select": "^4.0.13",
     "apollo": "^2.32.1",
-    "bootstrap": "^4.5.2",
+    "bootstrap": "^5.0.0",
     "classnames": "^2.2.6",
     "graphql": "^15.4.0",
     "react": "^16.13.1",
